@@ -4,6 +4,7 @@ name: phase-03-videos
 sources_mtime:
   docs/project-plan.md: "2026-06-29T11:39:20-03:00"
   docs/decisions/technical-decisions-phase-03-videos.md: "2026-07-03T16:45:33-03:00"
+  docs/decisions/technical-decisions-video-access-authorization.md: "2026-07-03T17:12:06-03:00"
   docs/decisions/technical-decisions-openapi-docs-nestjs.md: "2026-06-29T11:39:20-03:00"
   docs/phases/phase-01-configuracao-base/context.md: "2026-06-29T11:39:20-03:00"
   docs/phases/phase-02-auth/context.md: "2026-06-29T11:39:20-03:00"
@@ -55,10 +56,12 @@ sources_mtime:
 | phase-03-videos/TD-05 | phase | Backend | Public Video Identifier / Unique URL Strategy | decided | A (Reuse UUID primary key) | — |
 | phase-03-videos/TD-06 | phase | Backend | Video Delivery Strategy (Streaming & Download) | decided | A (Presigned GET URLs) | — |
 | phase-03-videos/TD-07 | phase | Backend | Video Status Lifecycle & Failure Handling | decided | A (Minimal 4-state machine — `draft → processing → ready \| error`) | — |
+| video-access-authorization/TD-01 | ad-hoc | Backend | Authorization Model for Video Streaming & Download | decided | B (Owner-only) | — |
 
 _Source files:_
 
 - phase-03-videos — `docs/decisions/technical-decisions-phase-03-videos.md` (scope_type: phase, related_phases: [3])
+- video-access-authorization — `docs/decisions/technical-decisions-video-access-authorization.md` (scope_type: ad-hoc, related_phases: [3])
 
 ## Capability Coverage
 
@@ -71,8 +74,8 @@ _Source files:_
 | Processamento automático do vídeo após upload (extração de duração e metadados) | phase-03-videos/TD-04 |
 | Geração automática de thumbnail a partir de um frame do vídeo | phase-03-videos/TD-04 |
 | URL única por vídeo, sem conflito com outros vídeos | phase-03-videos/TD-05 |
-| Reprodução via streaming (sem necessidade de download completo) | phase-03-videos/TD-06 |
-| Download do vídeo pelo usuário | phase-03-videos/TD-06 |
+| Reprodução via streaming (sem necessidade de download completo) | phase-03-videos/TD-06, video-access-authorization/TD-01 |
+| Download do vídeo pelo usuário | phase-03-videos/TD-06, video-access-authorization/TD-01 |
 
 ## Decisions Detail
 
@@ -112,7 +115,7 @@ _Source files:_
 **Recommendation:** it is the only option consistent with the architecture diagram's direct `frontend → storage` streaming relationship, and it delegates 206/Range handling to MinIO instead of reimplementing it in the API. Bandwidth for potentially many concurrent video streams never touches the NestJS process.
 **Libraries:** —
 
-**Note:** the dual-endpoint constraint documented in TD-02 (internal vs. public signing endpoint for SigV4) applies identically here.
+**Note:** the dual-endpoint constraint documented in TD-02 (internal vs. public signing endpoint for SigV4) applies identically here. See also `video-access-authorization/TD-01` for who is allowed to request the presigned URL in the first place.
 
 ### phase-03-videos/TD-07
 
@@ -120,6 +123,13 @@ _Source files:_
 **Libraries:** —
 
 **Note (to pin during plan-build):** the exact trigger of the `draft → processing` transition must be specified — it happens at the multipart-complete endpoint (API confirms upload and enqueues the job), not at worker pickup, so a video whose job is still queued already reads `processing`.
+
+**Note (resolved ambiguity, ex-AMB-1):** the video's `título` column is populated automatically at draft creation, derived from the uploaded file's original filename (sanitized, extension stripped) — no user input at upload-initiation in Phase 03. The column stays `NOT NULL`, satisfied by this derived value. The upload-initiation request contract does not carry a `title` field. Phase 04's edit flow overwrites this value with a user-chosen title.
+
+### video-access-authorization/TD-01
+
+**Recommendation:** it is the only option that doesn't expose unpublished video content to a wider audience than the platform has a mechanism to intentionally grant yet. It costs one ownership check (channel-of-video == channel-of-authenticated-user), reuses the JWT guard already global to the app, and is structured so Phase 04's visibility feature extends it (add a public/unlisted bypass branch) instead of retrofitting access control onto a route that started fully open.
+**Libraries:** —
 
 ## Inherited Decisions Detail
 
@@ -290,3 +300,5 @@ _None._
 _Anti-patterns to avoid (per the guide): unit-testing controllers, mocking configured libs (JwtService, queue client), skipping integration tests for DB-touching services, skipping module compilation tests, using `repository.delete({})` for cleanup, mirror tests, forgetting `afterAll(() => app.close())`, skipping `main.ts` global config reproduction in E2E._
 
 _Video-worker specific note (not in the generic guide, inferred from phase scope): the worker process (TD-04) and its `child_process.spawn` calls to ffmpeg/ffprobe should be tested at the integration level against real sample video fixtures — mocking ffmpeg's output would not catch a wrong CLI flag or a parsing bug in the ffprobe JSON output._
+
+_Video-access-authorization specific note: TD-01's ownership check (channel-of-video == channel-of-authenticated-user) is exactly the kind of branching-logic-with-DB-boundary the guide calls out — needs both a unit test (wrong-owner rejection with mocked repo) and an integration/E2E test proving the real guard+ownership chain rejects a non-owner's request with 403._
