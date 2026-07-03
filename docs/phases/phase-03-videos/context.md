@@ -55,7 +55,7 @@ sources_mtime:
 | phase-03-videos/TD-04 | phase | Backend | Video Processing Worker — Execution Model & Media Tooling | decided | A (Standalone NestJS app + `child_process.spawn`) | — |
 | phase-03-videos/TD-05 | phase | Backend | Public Video Identifier / Unique URL Strategy | decided | A (Reuse UUID primary key) | — |
 | phase-03-videos/TD-06 | phase | Backend | Video Delivery Strategy (Streaming & Download) | decided | A (Presigned GET URLs) | — |
-| phase-03-videos/TD-07 | phase | Backend | Video Status Lifecycle & Failure Handling | decided | A (Minimal 4-state machine — `draft → processing → ready \| error`) | — |
+| phase-03-videos/TD-07 | phase | Backend | Video Status Lifecycle & Failure Handling | decided | A (Minimal 4-state machine — `draft → processing → ready/error`) | — |
 | video-access-authorization/TD-01 | ad-hoc | Backend | Authorization Model for Video Streaming & Download | decided | B (Owner-only) | — |
 
 _Source files:_
