@@ -1,4 +1,5 @@
-import { envValidationSchema } from './env.validation';
+import * as Joi from 'joi';
+import { envValidationSchema, EnvVars } from './env.validation';
 
 const requiredEnv = {
   DB_USERNAME: 'user',
@@ -8,11 +9,16 @@ const requiredEnv = {
   JWT_REFRESH_SECRET: 'refresh-secret',
 };
 
-const validate = (env: Record<string, string>) =>
+interface ValidationOutcome {
+  value: EnvVars;
+  error?: Joi.ValidationError;
+}
+
+const validate = (env: Record<string, string>): ValidationOutcome =>
   envValidationSchema.validate(
     { ...requiredEnv, ...env },
     { allowUnknown: true, abortEarly: false },
-  );
+  ) as ValidationOutcome;
 
 describe('envValidationSchema — SWAGGER_ENABLED', () => {
   it('should reject SWAGGER_ENABLED with an invalid value', () => {
