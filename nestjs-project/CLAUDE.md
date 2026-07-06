@@ -34,6 +34,9 @@ docker compose exec nestjs-api npm run start:dev
 Services:
 - `nestjs-api` — NestJS API, port `3000`
 - `db` — PostgreSQL 17, port `5432`, database `streamtube`, user/password `streamtube`
+- `minio` — S3-compatible object storage, API port `9000`, console port `9001`, user/password `minioadmin`
+- `redis` — BullMQ broker for the video processing queue, no published port
+- `video-worker` — FFmpeg video processing worker (`Dockerfile.worker`), consumes the `video-processing` queue
 
 All verification and teardown commands run on the **host machine**:
 
@@ -148,6 +151,18 @@ NestJS with standard module structure. Source lives in `src/`, compiled output i
 
 - Each domain feature gets its own module (e.g., `UsersModule`, `VideosModule`) registered in `AppModule`
 - Controllers handle HTTP routing; Services hold business logic; both are scoped to their module
+
+## Videos Module
+
+Upload, processing, and delivery of videos. Introduces three new infra services in `compose.yaml`: `minio` (S3-compatible object storage), `redis` (BullMQ broker), and `video-worker` (FFmpeg processing, separate container).
+
+- `src/videos/` — `VideosController`/`VideosService`: `POST /videos` (initiate multipart upload, creates a `draft` video), `POST /videos/:id/complete` (finalizes upload, enqueues processing), `GET /videos/:id` (status/metadata), `GET /videos/:id/stream` and `GET /videos/:id/download` (presigned GET URLs, gated on `status = ready`). All routes require auth and ownership (`channel.user_id` must match the caller).
+- `src/videos/entities/video.entity.ts` — `Video` entity: `channel_id`, `title`, `status` (enum `draft → processing → ready|error`), `storage_key_original`, `storage_key_thumbnail`, `upload_id`, `duration_seconds`, `metadata` (jsonb), `error_reason`.
+- `src/storage/storage.service.ts` — S3 client (`@aws-sdk/client-s3`) against MinIO, `forcePathStyle: true`. Two endpoints: `STORAGE_INTERNAL_ENDPOINT` (container-to-container, e.g. `minio:9000`) for server-side ops, `STORAGE_PUBLIC_ENDPOINT` (`localhost:9000`) for presigned URLs handed to the client. Env: `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_BUCKET`, `STORAGE_REGION`.
+- `src/queue/` — BullMQ queue `video-processing` (`QueueModule`, `VideoQueueProducer.enqueueVideoProcessing(videoId)`), 3 retries with exponential backoff. Env: `REDIS_HOST`, `REDIS_PORT`.
+- `src/worker/` — standalone Nest application context (no HTTP, `NestFactory.createApplicationContext`), run via `npm run start:worker`. `VideoProcessor` (`@Processor('video-processing')`) downloads the original from storage, runs `ffprobe`/`ffmpeg` through `child_process.spawn` (`ffmpeg.util.ts`, no wrapper lib) to extract duration/metadata and generate a thumbnail, uploads the thumbnail, and marks the video `ready` or `error`.
+- Video ID doubles as its unique URL slug (same convention as `users`/`channels`, no separate slug column).
+- Streaming/download do not proxy bytes through the API — both return a presigned MinIO/S3 URL; range requests are handled by the storage layer itself, not by NestJS.
 
 ## Code Conventions
 
