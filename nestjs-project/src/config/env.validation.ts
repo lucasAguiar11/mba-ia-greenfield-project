@@ -50,12 +50,8 @@ export const envValidationSchema = Joi.object<EnvVars>({
   MAIL_PORT: Joi.number().default(1025),
   MAIL_FROM: Joi.string().default('"StreamTube" <noreply@streamtube.com>'),
   SWAGGER_ENABLED: Joi.string().valid('true', 'false').default('false'),
-  STORAGE_INTERNAL_ENDPOINT: Joi.string()
-    .uri()
-    .default('http://minio:9000'),
-  STORAGE_PUBLIC_ENDPOINT: Joi.string()
-    .uri()
-    .default('http://localhost:9000'),
+  STORAGE_INTERNAL_ENDPOINT: Joi.string().uri().default('http://minio:9000'),
+  STORAGE_PUBLIC_ENDPOINT: Joi.string().uri().default('http://localhost:9000'),
   STORAGE_REGION: Joi.string().default('us-east-1'),
   STORAGE_ACCESS_KEY_ID: Joi.string().default('minioadmin'),
   STORAGE_SECRET_ACCESS_KEY: Joi.string().default('minioadmin'),
