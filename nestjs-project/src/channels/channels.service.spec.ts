@@ -1,6 +1,8 @@
-import { DataSource, QueryFailedError } from 'typeorm';
+import { DataSource, QueryFailedError, Repository } from 'typeorm';
 import { ChannelsService } from './channels.service';
 import { Channel } from './entities/channel.entity';
+
+const noopChannelRepository = {} as Repository<Channel>;
 
 interface MockManager {
   findOne: jest.Mock;
@@ -55,7 +57,10 @@ describe('ChannelsService', () => {
         create: jest.fn().mockReturnValue(channel),
         save: jest.fn().mockResolvedValue(channel),
       });
-      const service = new ChannelsService(makeDataSource(manager));
+      const service = new ChannelsService(
+        makeDataSource(manager),
+        noopChannelRepository,
+      );
 
       const result = await service.createChannel('user-id', 'test@example.com');
 
@@ -77,7 +82,10 @@ describe('ChannelsService', () => {
         create: jest.fn().mockReturnValue(resolved),
         save: jest.fn().mockResolvedValue(resolved),
       });
-      const service = new ChannelsService(makeDataSource(manager));
+      const service = new ChannelsService(
+        makeDataSource(manager),
+        noopChannelRepository,
+      );
 
       const result = await service.createChannel('user-id', 'john@example.com');
 
@@ -99,7 +107,10 @@ describe('ChannelsService', () => {
           .mockRejectedValueOnce(makeUniqueError())
           .mockResolvedValueOnce(resolved),
       });
-      const service = new ChannelsService(makeDataSource(manager));
+      const service = new ChannelsService(
+        makeDataSource(manager),
+        noopChannelRepository,
+      );
 
       const result = await service.createChannel(
         'user-id',
@@ -117,7 +128,10 @@ describe('ChannelsService', () => {
         create: jest.fn(),
         save: jest.fn(),
       });
-      const service = new ChannelsService(makeDataSource(manager));
+      const service = new ChannelsService(
+        makeDataSource(manager),
+        noopChannelRepository,
+      );
 
       await expect(
         service.createChannel('user-id', 'bob@example.com'),
@@ -134,7 +148,10 @@ describe('ChannelsService', () => {
         create: jest.fn().mockReturnValue(channel),
         save: jest.fn().mockRejectedValue(unexpectedError),
       });
-      const service = new ChannelsService(makeDataSource(manager));
+      const service = new ChannelsService(
+        makeDataSource(manager),
+        noopChannelRepository,
+      );
 
       await expect(
         service.createChannel('user-id', 'carol@example.com'),

@@ -23,7 +23,7 @@ describe('ChannelsService (integration)', () => {
     await dataSource.initialize();
     userRepository = dataSource.getRepository(User);
     channelRepository = dataSource.getRepository(Channel);
-    channelsService = new ChannelsService(dataSource);
+    channelsService = new ChannelsService(dataSource, channelRepository);
   });
 
   afterAll(async () => {
@@ -88,6 +88,33 @@ describe('ChannelsService (integration)', () => {
 
       const channels = await channelRepository.find();
       expect(channels).toHaveLength(2);
+    });
+  });
+
+  describe('isOwnedByUser', () => {
+    it('returns true when the channel belongs to the given user', async () => {
+      const user = await createUser();
+      const channel = await channelsService.createChannel(
+        user.id,
+        'owner@example.com',
+      );
+
+      await expect(
+        channelsService.isOwnedByUser(channel.id, user.id),
+      ).resolves.toBe(true);
+    });
+
+    it('returns false when the channel belongs to a different user', async () => {
+      const owner = await createUser();
+      const otherUser = await createUser();
+      const channel = await channelsService.createChannel(
+        owner.id,
+        'notowned@example.com',
+      );
+
+      await expect(
+        channelsService.isOwnedByUser(channel.id, otherUser.id),
+      ).resolves.toBe(false);
     });
   });
 });
