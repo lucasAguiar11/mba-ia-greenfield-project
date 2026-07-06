@@ -19,6 +19,14 @@ export interface EnvVars {
   MAIL_PORT: number;
   MAIL_FROM: string;
   SWAGGER_ENABLED: 'true' | 'false';
+  STORAGE_INTERNAL_ENDPOINT: string;
+  STORAGE_PUBLIC_ENDPOINT: string;
+  STORAGE_REGION: string;
+  STORAGE_ACCESS_KEY_ID: string;
+  STORAGE_SECRET_ACCESS_KEY: string;
+  STORAGE_BUCKET: string;
+  REDIS_HOST: string;
+  REDIS_PORT: number;
 }
 
 export const envValidationSchema = Joi.object<EnvVars>({
@@ -42,4 +50,16 @@ export const envValidationSchema = Joi.object<EnvVars>({
   MAIL_PORT: Joi.number().default(1025),
   MAIL_FROM: Joi.string().default('"StreamTube" <noreply@streamtube.com>'),
   SWAGGER_ENABLED: Joi.string().valid('true', 'false').default('false'),
+  STORAGE_INTERNAL_ENDPOINT: Joi.string()
+    .uri()
+    .default('http://minio:9000'),
+  STORAGE_PUBLIC_ENDPOINT: Joi.string()
+    .uri()
+    .default('http://localhost:9000'),
+  STORAGE_REGION: Joi.string().default('us-east-1'),
+  STORAGE_ACCESS_KEY_ID: Joi.string().default('minioadmin'),
+  STORAGE_SECRET_ACCESS_KEY: Joi.string().default('minioadmin'),
+  STORAGE_BUCKET: Joi.string().default('streamtube'),
+  REDIS_HOST: Joi.string().default('redis'),
+  REDIS_PORT: Joi.number().default(6379),
 });
